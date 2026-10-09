@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["QuantTide Inc. <opensource@quanttide.com>"]
 description = "量潮数据工程实验室 — 四层形式化数据智能体核心库"
-license = "MIT"
+license = "Apache-2.0"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
