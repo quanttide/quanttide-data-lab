@@ -57,3 +57,45 @@ pub fn temp_root(tag: &str) -> PathBuf {
     std::fs::create_dir_all(&dir).expect("创建临时根目录");
     dir
 }
+
+#[allow(dead_code)]
+/// 四层命令与对应夹具文件名（主仓「量潮搜索工程」案例）。
+pub const LAYERS: [(&str, &str); 4] = [
+    ("req", "requirement.md"),
+    ("intent", "intent.md"),
+    ("spec", "specification.md"),
+    ("impl", "implementation.md"),
+];
+
+#[allow(dead_code)]
+/// 读取某层夹具原文（相对 CLI crate 根）。
+pub fn fixture(file: &str) -> String {
+    std::fs::read_to_string(format!("../../examples/fixtures/quanttide-search/{file}"))
+        .unwrap_or_else(|err| panic!("读取夹具 {file} 失败：{err}"))
+}
+
+#[allow(dead_code)]
+/// 建一个案例，把四份夹具经 `update` 写进去（顺走过门禁），返回（根目录, 案例名）。
+pub fn case_with_fixtures(tag: &str) -> (String, String) {
+    let root = temp_root(tag);
+    let root = root.to_str().expect("临时根目录路径").to_string();
+    let case = format!("case-{tag}");
+    assert!(
+        run(&["--root", &root, "--case", &case, "req", "new"])
+            .status
+            .success(),
+        "建案例应成功"
+    );
+    for (layer, file) in LAYERS {
+        let out = run_with_stdin(
+            &["--root", &root, "--case", &case, layer, "update"],
+            &fixture(file),
+        );
+        assert!(
+            out.status.success(),
+            "{layer} 夹具应过门禁：{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    (root, case)
+}

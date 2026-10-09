@@ -193,6 +193,13 @@ impl Manifest {
     }
 }
 
+/// 追溯查询的中间产物：链路、断链，以及数据意图层的命题标签（供通配命中判定用）。
+type TraceParts = (
+    Vec<specification::TraceLink>,
+    Vec<specification::ChainBreak>,
+    Vec<String>,
+);
+
 /// 工作空间：以根目录为界的案例产物读写。
 ///
 /// 布局：
@@ -334,44 +341,36 @@ pub struct TraceReport {
 impl Workspace {
     /// 正查：案例追溯矩阵的全部链路。
     pub fn trace_forward(&self, case: &str) -> Result<TraceReport, LabError> {
-        let (links, breaks) = self.trace_parts(case)?;
+        let (links, breaks, _) = self.trace_parts(case)?;
         Ok(TraceReport { links, breaks })
     }
 
     /// 反查：`claim` 取报告章节名或断言 ID，返回命中的上游链路。
     pub fn trace_back(&self, case: &str, claim: &str) -> Result<TraceReport, LabError> {
-        let (links, breaks) = self.trace_parts(case)?;
+        let (links, breaks, known_claims) = self.trace_parts(case)?;
         let links = links
             .into_iter()
-            .filter(|link| specification::link_matches(link, claim))
+            .filter(|link| specification::link_matches(link, claim, &known_claims))
             .collect();
         Ok(TraceReport { links, breaks })
     }
 
-    /// 读四层正文，解析追溯矩阵并检测断链。
-    fn trace_parts(
-        &self,
-        case: &str,
-    ) -> Result<
-        (
-            Vec<specification::TraceLink>,
-            Vec<specification::ChainBreak>,
-        ),
-        LabError,
-    > {
+    /// 读四层正文，解析追溯矩阵、检测断链，并带出数据意图层的命题标签。
+    fn trace_parts(&self, case: &str) -> Result<TraceParts, LabError> {
         let requirement_body = self.read_doc(case, Layer::Requirement)?;
         let intent_body = self.read_doc(case, Layer::Intent)?;
         let spec_body = self.read_doc(case, Layer::Specification)?;
         let implementation_body = self.read_doc(case, Layer::Implementation)?;
         let links = specification::traceability(&spec_body).map_err(LabError::new)?;
+        let known_claims = intent::claims(&intent_body);
         let breaks = specification::chain_breaks(
             &links,
-            &intent::claims(&intent_body),
+            &known_claims,
             &intent::metrics(&intent_body),
             &requirement::success_metrics(&requirement_body),
             &implementation_body,
         );
-        Ok((links, breaks))
+        Ok((links, breaks, known_claims))
     }
 }
 

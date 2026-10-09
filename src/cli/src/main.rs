@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use qtcloud_data_lab::error::CliError;
+use quanttide_data_lab::specification::{MatrixCell, TraceLink};
 use quanttide_data_lab::{Layer, Workspace};
 
 #[derive(Parser)]
@@ -99,10 +100,7 @@ fn run_command(cli: &Cli) -> Result<(), CliError> {
             println!("run: {steps:?}（尚未实现）");
             Ok(())
         }
-        Commands::Trace { claim } => {
-            println!("trace: {claim:?}（尚未实现）");
-            Ok(())
-        }
+        Commands::Trace { claim } => trace(&workspace, case, claim.as_deref()),
         Commands::Refute {
             from_layer,
             to_layer,
@@ -157,6 +155,63 @@ fn layer(
             print!("{}", workspace.read_doc(case, layer)?);
             Ok(())
         }
+    }
+}
+
+/// `trace`：打印追溯矩阵链路；带 `claim` 时按报告章节名或断言 ID 反查。
+///
+/// 链条一行，四列齐全；断链逐条打印（行、列、值、原因）并以退出码 1 结束。
+fn trace(workspace: &Workspace, case: &str, claim: Option<&str>) -> Result<(), CliError> {
+    let report = match claim {
+        Some(claim) => workspace.trace_back(case, claim)?,
+        None => workspace.trace_forward(case)?,
+    };
+
+    if let Some(claim) = claim
+        && report.links.is_empty()
+    {
+        return Err(CliError::new(format!(
+            "未命中：`{claim}` 既不是追溯矩阵的报告章节名，也不是数据意图层的断言 ID"
+        )));
+    }
+
+    for link in &report.links {
+        println!("{}", link_line(link));
+    }
+
+    if !report.breaks.is_empty() {
+        println!("断链 {} 处：", report.breaks.len());
+        for chain_break in &report.breaks {
+            println!("{chain_break}");
+        }
+        return Err(CliError::new(format!(
+            "追溯矩阵存在 {} 处断链",
+            report.breaks.len()
+        )));
+    }
+    Ok(())
+}
+
+/// 一条链路一行：报告章节 → 命题 → 数据意图指标 → 业务成功指标。
+fn link_line(link: &TraceLink) -> String {
+    format!(
+        "{} → {} → {} → {}",
+        cell_text(&link.section),
+        cell_text(&link.claims),
+        cell_text(&link.intent_metrics),
+        cell_text(&link.success_metrics)
+    )
+}
+
+/// 追溯矩阵一格的可读文本；整层通配写作「全部」。
+fn cell_text<T: std::fmt::Display>(cell: &MatrixCell<T>) -> String {
+    match cell {
+        MatrixCell::Items(items) => items
+            .iter()
+            .map(|item| item.to_string())
+            .collect::<Vec<_>>()
+            .join("、"),
+        MatrixCell::All => "全部".to_string(),
     }
 }
 

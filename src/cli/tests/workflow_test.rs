@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{run, stdout, temp_root};
+use common::{case_with_fixtures, run, stdout, temp_root};
 
 #[test]
 fn run_accepts_spec_defined_steps() {
@@ -33,7 +33,8 @@ fn run_without_steps_defaults_to_the_whole_chain() {
 
 #[test]
 fn trace_runs_without_a_claim() {
-    let out = run(&["trace"]);
+    let (root, case) = case_with_fixtures("workflow-trace-forward");
+    let out = run(&["--root", &root, "--case", &case, "trace"]);
     assert!(
         out.status.success(),
         "stderr：{}",
@@ -45,7 +46,16 @@ fn trace_runs_without_a_claim() {
 #[test]
 fn trace_accepts_a_case_traceability_id() {
     // 追溯 ID 形如 `INT-001-H2`（案例里命题 H2 的编号）。
-    let out = run(&["trace", "--claim", "INT-001-H2"]);
+    let (root, case) = case_with_fixtures("workflow-trace-claim");
+    let out = run(&[
+        "--root",
+        &root,
+        "--case",
+        &case,
+        "trace",
+        "--claim",
+        "INT-001-H2",
+    ]);
     assert!(
         out.status.success(),
         "stderr：{}",

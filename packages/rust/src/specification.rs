@@ -480,12 +480,15 @@ pub fn chain_breaks(
 }
 
 /// 某条链路是否命中查询：`claim` 取报告章节名或断言 ID。
-pub fn link_matches(link: &TraceLink, claim: &str) -> bool {
+///
+/// 整层通配 `全部命题` 只覆盖数据意图层真实存在的命题——`known_claims` 传该层命题表的标签，
+/// 不存在的断言 ID 不得因通配而命中。
+pub fn link_matches(link: &TraceLink, claim: &str, known_claims: &[String]) -> bool {
     let claim = claim.trim();
     if let Ok(id) = parse_assertion_id(claim) {
         match &link.claims {
             MatrixCell::Items(ids) => ids.iter().any(|candidate| candidate == &id),
-            MatrixCell::All => true,
+            MatrixCell::All => known_claims.iter().any(|label| label == &id.label),
         }
     } else {
         match &link.section {
@@ -625,13 +628,14 @@ mod tests {
             link.section.is_all() || link.section.items().iter().any(|name| name == "结果体量")
         }));
 
-        // 不变量：不存在的命题不会命中任何显式链路（只能命中整层通配）。
+        // 不变量：不存在的命题不得因整层通配而命中（通配只覆盖数据意图层真实命题）。
         let missing = workspace
             .trace_back(case, "INT-001-H9")
             .expect("查不存在命题");
         assert!(
-            missing.links.iter().all(|link| link.claims.is_all()),
-            "不存在的命题不应命中显式链路"
+            missing.links.is_empty(),
+            "不存在的命题不应命中任何链路：{:?}",
+            missing.links
         );
     }
 
