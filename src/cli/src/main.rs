@@ -150,10 +150,6 @@ fn layer(
 
 /// `status`：列出该案例各层的状态 / 版本 / 更新时间。
 fn status(workspace: &Workspace, case: &str) -> Result<(), CliError> {
-    if !workspace.exists(case) {
-        println!("案例 `{case}`：未找到 manifest");
-        return Ok(());
-    }
     let manifest = workspace.read_manifest(case)?;
     println!("案例：{}", manifest.case);
     for layer in Layer::ALL {

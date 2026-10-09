@@ -10,8 +10,8 @@
 
 - [x] **脚手架**：`packages/rust`（`quanttide-data-lab`，data 库）与 `src/cli`（`qtcloud-data-lab`，bin）分离：库不依赖 `quanttide-agent`；CLI 已声明对 data 库与 `quanttide-agent` 0.1.2 的依赖，agent 的调用待 M1b。
 - [x] **四层分层约定**：`requirement` / `intent` / `specification` / `implementation` 四个模块占位，`lib.rs` 的 `Layer` 枚举给出 `REQ/INT/SPEC/IMP` 前缀。实体、`Artifact` 与状态机（`draft → validated → executed` / `failed` / `stale`）待 M1a。
-- [x] **命令行入口（只有命令面）**：`req|intent|spec|impl new|update|show`、`run [<step>...]`、`trace [--claim <id>]`、`refute <from> <to>`、`status [--case <name>]`。各命令当前打印「尚未实现」，实现自 M1a 起逐条接入。
-- [x] **案例驱动测试**：以「量潮搜索工程」为样本，`src/cli/tests/` 4 个集成测试文件（库 1 条 + CLI 21 条，离线全绿；覆盖率未测）。
+- [x] **命令行入口**：`req|intent|spec|impl new|update|show`、`run [<step>...]`、`trace [--claim <id>]`、`refute <from> <to>`、`status`；另有全局参数 `--root <dir>`（工作空间根，默认 `./workspace/`）与 `--case <name>`（案例名，默认 `default`）。四层的 `new|update|show` 与 `status` 已接真实读写；`run`/`trace`/`refute` 仍为占位。
+- [x] **案例驱动测试**：以「量潮搜索工程」为样本，`src/cli/tests/` 5 个集成测试文件（库 2 条 + CLI 27 条，离线全绿；覆盖率未测）。
 
 ---
 
@@ -19,7 +19,7 @@
 
 > 四层产物能落盘、能读回、能被结构化门禁拦下——全程零 LLM。
 
-- [ ] **工作空间 I/O**：`workspace/<case>/docs/{requirement,intent,specification,implementation}.md` 与 `manifest.json` 的读写（版本、时间戳、状态）；`req|intent|spec|impl show` 接上真实读回。
+- [x] **工作空间 I/O**：`workspace/<case>/docs/{requirement,intent,specification,implementation}.md` 与 `manifest.json` 的读写（版本、时间戳、状态）；四层的 `new|update|show` 与 `status` 接上真实读写。
 - [ ] **四层结构化门禁**：
   - `REQ`：成功指标是业务后果而非交付物；范围可界定；约束齐全。
   - `INT`：每个概念有操作定义；每个命题有可证伪条件；相关与因果分列。

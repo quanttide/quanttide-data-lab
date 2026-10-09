@@ -293,6 +293,11 @@ fn now_rfc3339() -> String {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_secs() as i64)
         .unwrap_or(0);
+    format_rfc3339(seconds)
+}
+
+/// 把 Unix 秒数（可为负）格式化成 RFC3339 UTC 字符串。
+fn format_rfc3339(seconds: i64) -> String {
     let days = seconds.div_euclid(86_400);
     let remainder = seconds.rem_euclid(86_400);
     let (year, month, day) = civil_from_days(days);
@@ -324,6 +329,15 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn format_rfc3339_matches_known_epochs() {
+        assert_eq!(format_rfc3339(0), "1970-01-01T00:00:00Z");
+        assert_eq!(format_rfc3339(-1), "1969-12-31T23:59:59Z");
+        assert_eq!(format_rfc3339(951_782_400), "2000-02-29T00:00:00Z");
+        assert_eq!(format_rfc3339(1_700_000_000), "2023-11-14T22:13:20Z");
+        assert_eq!(format_rfc3339(1_791_504_000), "2026-10-09T00:00:00Z");
+    }
 
     #[test]
     fn layer_prefixes_match_traceability_scheme() {

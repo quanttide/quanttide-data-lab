@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{run, stdout};
+use common::{run, stdout, temp_root};
 
 #[test]
 fn run_accepts_spec_defined_steps() {
@@ -69,27 +69,24 @@ fn refute_accepts_a_downstream_to_upstream_pair() {
 }
 
 #[test]
-fn status_accepts_the_search_case_name() {
+fn status_on_missing_case_fails_with_readable_error() {
     let out = run(&["status", "--case", "quanttide-search"]);
+    assert!(!out.status.success(), "缺失案例应失败");
+    assert_eq!(out.status.code(), Some(1), "退出码应为 1");
+    let err = String::from_utf8_lossy(&out.stderr);
     assert!(
-        out.status.success(),
-        "stderr：{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        stdout(&out).contains("quanttide-search"),
-        "{}",
-        stdout(&out)
+        err.contains("quanttide-search"),
+        "错误信息应含案例名：{err}"
     );
 }
 
 #[test]
-fn status_runs_without_a_case() {
-    // `--case` 为可选参数。
-    let out = run(&["status"]);
-    assert!(
-        out.status.success(),
-        "stderr：{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+fn status_without_a_case_resolves_the_default_case() {
+    // `--case` 为可选参数，缺省是 `default`；该案例不存在时报错（与非零退出码）。
+    let root = temp_root("status-default");
+    let out = run(&["--root", root.to_str().unwrap(), "status"]);
+    assert!(!out.status.success(), "工作空间里没有 default 案例应失败");
+    assert_eq!(out.status.code(), Some(1), "退出码应为 1");
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("default"), "错误信息应含默认案例名：{err}");
 }
