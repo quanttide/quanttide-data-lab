@@ -63,3 +63,13 @@ pub fn gate(body: &str) -> GateReport {
 
     GateReport::from_reasons(reasons)
 }
+
+/// 命题标签：取「命题与假设」表的「假设」列，如 `H1`。
+pub fn claims(body: &str) -> Vec<String> {
+    crate::column_values(body, &["假设", "内容", "可证伪条件"], "假设")
+}
+
+/// 指标名：取「指标」表的「指标」列。
+pub fn metrics(body: &str) -> Vec<String> {
+    crate::column_values(body, &["指标", "定义"], "指标")
+}

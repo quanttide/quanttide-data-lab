@@ -322,6 +322,59 @@ impl Workspace {
     }
 }
 
+/// 追溯查询结果：命中的链路，以及全矩阵的断链。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraceReport {
+    /// 命中的链路。
+    pub links: Vec<specification::TraceLink>,
+    /// 全矩阵的断链检测结果。
+    pub breaks: Vec<specification::ChainBreak>,
+}
+
+impl Workspace {
+    /// 正查：案例追溯矩阵的全部链路。
+    pub fn trace_forward(&self, case: &str) -> Result<TraceReport, LabError> {
+        let (links, breaks) = self.trace_parts(case)?;
+        Ok(TraceReport { links, breaks })
+    }
+
+    /// 反查：`claim` 取报告章节名或断言 ID，返回命中的上游链路。
+    pub fn trace_back(&self, case: &str, claim: &str) -> Result<TraceReport, LabError> {
+        let (links, breaks) = self.trace_parts(case)?;
+        let links = links
+            .into_iter()
+            .filter(|link| specification::link_matches(link, claim))
+            .collect();
+        Ok(TraceReport { links, breaks })
+    }
+
+    /// 读四层正文，解析追溯矩阵并检测断链。
+    fn trace_parts(
+        &self,
+        case: &str,
+    ) -> Result<
+        (
+            Vec<specification::TraceLink>,
+            Vec<specification::ChainBreak>,
+        ),
+        LabError,
+    > {
+        let requirement_body = self.read_doc(case, Layer::Requirement)?;
+        let intent_body = self.read_doc(case, Layer::Intent)?;
+        let spec_body = self.read_doc(case, Layer::Specification)?;
+        let implementation_body = self.read_doc(case, Layer::Implementation)?;
+        let links = specification::traceability(&spec_body).map_err(LabError::new)?;
+        let breaks = specification::chain_breaks(
+            &links,
+            &intent::claims(&intent_body),
+            &intent::metrics(&intent_body),
+            &requirement::success_metrics(&requirement_body),
+            &implementation_body,
+        );
+        Ok((links, breaks))
+    }
+}
+
 /// Markdown 表格：表头与数据行。
 pub(crate) struct Table {
     /// 表头单元格（已去空白）。
@@ -446,6 +499,24 @@ pub(crate) fn find_table(body: &str, required: &[&str]) -> Option<Table> {
 /// 表头中某列的下标。
 pub(crate) fn column(header: &[String], name: &str) -> Option<usize> {
     header.iter().position(|cell| cell == name)
+}
+
+/// 取「表头含全部 `required` 且含 `name` 列」的表在该列的非空取值。
+pub(crate) fn column_values(body: &str, required: &[&str], name: &str) -> Vec<String> {
+    find_table(body, required)
+        .and_then(|table| {
+            let col = column(&table.header, name)?;
+            Some(
+                table
+                    .rows
+                    .iter()
+                    .filter_map(|row| row.get(col))
+                    .map(|cell| cell.trim().to_string())
+                    .filter(|cell| !cell.is_empty())
+                    .collect(),
+            )
+        })
+        .unwrap_or_default()
 }
 
 /// 层的中文名，用于可读错误信息。

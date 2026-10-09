@@ -66,3 +66,8 @@ pub fn gate(body: &str) -> GateReport {
 
     GateReport::from_reasons(reasons)
 }
+
+/// 业务成功指标名：取「成功指标（业务口径）」表的「指标」列。
+pub fn success_metrics(body: &str) -> Vec<String> {
+    crate::column_values(body, &["指标", "口径", "目标方向"], "指标")
+}

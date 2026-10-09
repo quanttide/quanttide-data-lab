@@ -11,7 +11,7 @@
 - [x] **脚手架**：`packages/rust`（`quanttide-data-lab`，data 库）与 `src/cli`（`qtcloud-data-lab`，bin）分离：库不依赖 `quanttide-agent`；CLI 已声明对 data 库与 `quanttide-agent` 0.1.2 的依赖，agent 的调用待 M1b。
 - [x] **四层分层约定**：`requirement` / `intent` / `specification` / `implementation` 四个模块占位，`lib.rs` 的 `Layer` 枚举给出 `REQ/INT/SPEC/IMP` 前缀。实体、`Artifact` 与状态机（`draft → validated → executed` / `failed` / `stale`）待 M1a。
 - [x] **命令行入口**：`req|intent|spec|impl new|update|show`、`run [<step>...]`、`trace [--claim <id>]`、`refute <from> <to>`、`status`；另有全局参数 `--root <dir>`（工作空间根，默认 `./workspace/`）与 `--case <name>`（案例名，默认 `default`）。四层的 `new|update|show` 与 `status` 已接真实读写；`run`/`trace`/`refute` 仍为占位。
-- [x] **案例驱动测试**：以「量潮搜索工程」为样本，`src/cli/tests/` 6 个集成测试文件（库 2 条 + CLI 29 条，离线全绿；覆盖率未测）。
+- [x] **案例驱动测试**：以「量潮搜索工程」为样本，`src/cli/tests/` 6 个集成测试文件（库 7 条 + CLI 29 条，离线全绿；覆盖率未测）。
 
 ---
 
@@ -43,7 +43,7 @@
 
 > 四层贯通，追溯矩阵双向可查。
 
-- [ ] **追溯 ID 解析**：`REQ-001 → INT-001 → SPEC-001 → IMP-001`，支持挂层级下的断言 ID（如 `INT-001-H2`）。
+- [x] **追溯 ID 解析（库内）**：`REQ-001 → INT-001 → SPEC-001 → IMP-001`，支持挂层级下的断言 ID（`INT-001-H2`、区间 `INT-001-H1–H3`、整层通配 `全部命题`）。回溯矩阵的解析、断链检测（指名所在格）与正查/反查两个查询都在 `packages/rust/src/specification.rs`，矩阵格式见 `docs/index.md` §5.2；`trace` 命令接线待下一步。
 - [ ] **`trace`**：正查（需求 → 指标 → 命题 → 报告章节）与反查（`--claim <id>` 回溯结论的上游依据）。
 - [ ] **`refute` 反向挑战**：`INT→REQ`（无法形式化）、`SPEC→INT`（不可计算）、`IMP→SPEC`（规格自相矛盾）；记「触发点 → 结论 → 改动」，并将被挑战层置 `stale`。
 - [ ] **`status`**：列出各层状态、版本与时间戳；上游变更后下游标 `stale`。
