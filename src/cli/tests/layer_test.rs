@@ -5,7 +5,7 @@
 
 mod common;
 
-use common::{run, stdout};
+use common::{run, run_with_stdin, stdout, temp_root};
 
 /// 层命令 → 案例中该层的一句话定位。
 const LAYERS: [(&str, &str); 4] = [
@@ -46,9 +46,18 @@ fn each_layer_lists_the_three_actions() {
 
 #[test]
 fn each_layer_dispatches_every_action() {
-    for (layer, _) in LAYERS {
+    for (index, (layer, _)) in LAYERS.iter().enumerate() {
+        let layer = *layer;
+        let root_dir = temp_root(&format!("layer-{index}"));
+        let root = root_dir.to_str().expect("临时根目录路径");
+        let case = format!("layer-{index}");
+        let case = case.as_str();
         for action in ACTIONS {
-            let out = run(&[layer, action]);
+            let out = if action == "update" {
+                run_with_stdin(&["--root", root, "--case", case, layer, action], "正文\n")
+            } else {
+                run(&["--root", root, "--case", case, layer, action])
+            };
             assert!(
                 out.status.success(),
                 "{layer} {action} 应成功退出，stderr：{}",

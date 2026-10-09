@@ -43,6 +43,12 @@ impl From<&str> for CliError {
     }
 }
 
+impl From<quanttide_data_lab::LabError> for CliError {
+    fn from(err: quanttide_data_lab::LabError) -> Self {
+        Self::new(err.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
