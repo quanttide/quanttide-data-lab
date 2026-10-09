@@ -30,12 +30,13 @@ pub fn run_with_stdin(args: &[&str], stdin: &str) -> Output {
         .stderr(Stdio::piped())
         .spawn()
         .expect("启动 qtcloud-data-lab");
-    child
+    // 子进程可能在读完输入前就报错退出（如非法挑战对）：写管道会 EPIPE，忽略即可；
+    // 判据看退出码与输出，不看这次写入。
+    let _ = child
         .stdin
         .as_mut()
         .expect("子进程 stdin")
-        .write_all(stdin.as_bytes())
-        .expect("写入子进程 stdin");
+        .write_all(stdin.as_bytes());
     child.wait_with_output().expect("等待 qtcloud-data-lab")
 }
 

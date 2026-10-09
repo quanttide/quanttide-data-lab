@@ -18,7 +18,7 @@ pub mod specification;
 pub use error::LabError;
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -63,6 +63,40 @@ impl Layer {
             Layer::Intent => "intent",
             Layer::Specification => "specification",
             Layer::Implementation => "implementation",
+        }
+    }
+
+    /// 层的短名，如 `req`；挑战记录文件名与命令行都用它。
+    pub fn short_name(self) -> &'static str {
+        match self {
+            Layer::Requirement => "req",
+            Layer::Intent => "intent",
+            Layer::Specification => "spec",
+            Layer::Implementation => "impl",
+        }
+    }
+
+    /// 由层名解析：短名（`req`/`intent`/`spec`/`impl`）或全名
+    /// （`requirement`/`intent`/`specification`/`implementation`）均可。
+    pub fn from_name(name: &str) -> Option<Layer> {
+        match name {
+            "req" | "requirement" => Some(Layer::Requirement),
+            "intent" => Some(Layer::Intent),
+            "spec" | "specification" => Some(Layer::Specification),
+            "impl" | "implementation" => Some(Layer::Implementation),
+            _ => None,
+        }
+    }
+
+    /// 紧邻的上游层：`impl → spec → intent → req`；`req` 无上游。
+    ///
+    /// 「下游挑战上游」只允许相邻层，故 `from.upstream() == Some(to)` 即合法挑战对。
+    pub fn upstream(self) -> Option<Layer> {
+        match self {
+            Layer::Requirement => None,
+            Layer::Intent => Some(Layer::Requirement),
+            Layer::Specification => Some(Layer::Intent),
+            Layer::Implementation => Some(Layer::Specification),
         }
     }
 
@@ -292,7 +326,8 @@ impl Workspace {
         })
     }
 
-    /// 写入某层正文：版本 +1、状态回 `draft`、更新时间刷新。
+    /// 写入某层正文：版本 +1、状态回 `draft`、更新时间刷新；
+    /// 同时把该层下游已有正文（非空）的层置 `stale`，下游空正文保持 `draft`。
     pub fn write_doc(&self, case: &str, layer: Layer, body: &str) -> Result<Manifest, LabError> {
         let mut manifest = self.read_manifest(case)?;
         fs::write(self.doc_path(case, layer), body)?;
@@ -300,8 +335,36 @@ impl Workspace {
         artifact.version += 1;
         artifact.status = Status::Draft;
         artifact.updated_at = now_rfc3339();
+        self.mark_downstream_stale(case, &mut manifest, layer)?;
         self.write_manifest(case, &manifest)?;
         Ok(manifest)
+    }
+
+    /// 把 `layer` 下游已有正文（非空）的层置 `stale`；下游空正文保持 `draft`。
+    ///
+    /// 这是 §5.3「任一层变更，下游层标记为 `stale`」的落地口径：只标记会被上游
+    /// 变更作废的已有产物，尚未生成的下游层不动。
+    fn mark_downstream_stale(
+        &self,
+        case: &str,
+        manifest: &mut Manifest,
+        layer: Layer,
+    ) -> Result<(), LabError> {
+        let mut downstream = false;
+        for candidate in Layer::ALL {
+            if candidate == layer {
+                downstream = true;
+                continue;
+            }
+            if !downstream {
+                continue;
+            }
+            if self.read_doc(case, candidate)?.trim().is_empty() {
+                continue;
+            }
+            manifest.artifact_mut(candidate).status = Status::Stale;
+        }
+        Ok(())
     }
 
     /// 写回清单。
@@ -327,6 +390,78 @@ impl Workspace {
         }
         Ok(report)
     }
+}
+
+/// 反向挑战记录的三行必备字段。
+const REFUTATION_FIELDS: [&str; 3] = ["触发点", "结论", "改动"];
+
+impl Workspace {
+    /// 反向挑战记录目录：`<case>/refutations/`。
+    fn refutations_dir(&self, case: &str) -> PathBuf {
+        self.case_dir(case).join("refutations")
+    }
+
+    /// 落盘一条反向挑战记录，并把被挑战层（`to`）置 `stale`。
+    ///
+    /// 正文须含 `触发点：`/`结论：`/`改动：` 三行字段，各至少一个非空字符；
+    /// 缺一即拒（返回错误、不落盘）。记录文件名为
+    /// `<四位序号>-<from 短名>-<to 短名>.md`，序号自 `0001` 起、按落盘顺序递增。
+    pub fn write_refutation(
+        &self,
+        case: &str,
+        from: Layer,
+        to: Layer,
+        body: &str,
+    ) -> Result<PathBuf, LabError> {
+        let missing: Vec<&str> = REFUTATION_FIELDS
+            .iter()
+            .copied()
+            .filter(|label| !refutation_has_field(body, label))
+            .collect();
+        if !missing.is_empty() {
+            return Err(LabError::new(format!(
+                "挑战记录缺少字段：{}（每条记录须含 `触发点：`、`结论：`、`改动：`，且冒号后非空）",
+                missing.join("、")
+            )));
+        }
+        let mut manifest = self.read_manifest(case)?;
+        let dir = self.refutations_dir(case);
+        fs::create_dir_all(&dir)?;
+        let path = dir.join(format!(
+            "{:04}-{}-{}.md",
+            next_refutation_seq(&dir),
+            from.short_name(),
+            to.short_name()
+        ));
+        fs::write(&path, body)?;
+        manifest.artifact_mut(to).status = Status::Stale;
+        self.write_manifest(case, &manifest)?;
+        Ok(path)
+    }
+}
+
+/// 正文是否含一行 `label：` 且冒号后有非空内容。
+fn refutation_has_field(body: &str, label: &str) -> bool {
+    let prefix = format!("{label}：");
+    body.lines().any(|line| {
+        line.trim()
+            .strip_prefix(&prefix)
+            .is_some_and(|rest| !rest.trim().is_empty())
+    })
+}
+
+/// 下一个挑战记录序号：目录内已有四位序号最大值 + 1；无记录则为 1。
+fn next_refutation_seq(dir: &Path) -> u32 {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return 1;
+    };
+    let max = entries
+        .flatten()
+        .filter_map(|entry| entry.file_name().to_str().map(str::to_owned))
+        .filter_map(|name| name.get(..4).and_then(|prefix| prefix.parse::<u32>().ok()))
+        .max()
+        .unwrap_or(0);
+    max + 1
 }
 
 /// 追溯查询结果：命中的链路，以及全矩阵的断链。

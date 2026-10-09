@@ -104,10 +104,7 @@ fn run_command(cli: &Cli) -> Result<(), CliError> {
         Commands::Refute {
             from_layer,
             to_layer,
-        } => {
-            println!("refute: {from_layer} → {to_layer}（尚未实现）");
-            Ok(())
-        }
+        } => refute(&workspace, case, from_layer, to_layer),
         Commands::Status => status(&workspace, case),
     }
 }
@@ -213,6 +210,38 @@ fn cell_text<T: std::fmt::Display>(cell: &MatrixCell<T>) -> String {
             .join("、"),
         MatrixCell::All => "全部".to_string(),
     }
+}
+
+/// `refute <from> <to>`：落盘一条下游挑战上游的记录，并把被挑战层置 `stale`。
+///
+/// 合法对只有相邻的「下游 → 上游」：`impl→spec`、`spec→intent`、`intent→req`；
+/// 层名收短名或全名。非法对、缺字段都不落盘、以退出码 1 结束。
+fn refute(workspace: &Workspace, case: &str, from: &str, to: &str) -> Result<(), CliError> {
+    // 先校验层对再读正文：非法对要立刻报错，不能挂着等 stdin。
+    let from = parse_layer(from)?;
+    let to = parse_layer(to)?;
+    if from.upstream() != Some(to) {
+        return Err(CliError::new(format!(
+            "非法挑战对：{} → {}；只允许相邻的下游挑战上游（impl→spec、spec→intent、intent→req）",
+            from.short_name(),
+            to.short_name()
+        )));
+    }
+    let mut body = String::new();
+    std::io::stdin().read_to_string(&mut body)?;
+    let path = workspace.write_refutation(case, from, to, &body)?;
+    println!(
+        "已记录反向挑战：{}；被挑战层 {} 现为 stale",
+        path.display(),
+        to.file_stem()
+    );
+    Ok(())
+}
+
+/// 解析层名：短名或全名；未知层名报错。
+fn parse_layer(name: &str) -> Result<Layer, CliError> {
+    Layer::from_name(name)
+        .ok_or_else(|| CliError::new(format!("未知层名：`{name}`（可用 req/intent/spec/impl）")))
 }
 
 /// `status`：列出该案例各层的状态 / 版本 / 更新时间。
