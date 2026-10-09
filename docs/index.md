@@ -165,7 +165,9 @@ qtcloud-data-lab status     [--case <name>]            # 各层状态与版本
 
 ### 大模型接入
 
-CLI 通过 Rust 库 `quanttide-agent` 接入大模型，`req` / `intent` / `spec` / `impl` 的 `new` 起草等生成动作经该库调用。本机已配置小米 MiMo 的 API 密钥，可直接联调。
+分层依赖：`packages/rust`（`quanttide-data-lab`，data 库）**不依赖** `quanttide-agent`——四层领域模型保持纯净，无 LLM 耦合；`src/cli`（`qtcloud-data-lab`）负责**组装** data 库与 agent 库，LLM 只在 CLI 层接入。
+
+`req` / `intent` / `spec` / `impl` 的 `new` 起草等生成动作，由 CLI 调用 `quanttide-agent` 完成。本机已配置小米 MiMo 的 API 密钥，可直接联调。
 
 接入要点：依赖 `quanttide-agent >= 0.1.2`（`0.1.1` 尚无 MiMo 支持）；该库读取 `MIMO_API_KEY`（本机现有 `XIAOMI_API_KEY`，需再导出同值的 `MIMO_API_KEY`）、`MIMO_MODEL`（默认 `mimo-v2.5`）与 `MIMO_BASE_URL`（默认 `https://api.xiaomimimo.com/v1`）。
 
