@@ -130,7 +130,19 @@ fn layer(
         LayerAction::Update => {
             let mut body = String::new();
             std::io::stdin().read_to_string(&mut body)?;
-            let manifest = workspace.write_doc(case, layer, &body)?;
+            workspace.write_doc(case, layer, &body)?;
+            let report = workspace.gate_doc(case, layer)?;
+            if !report.passed {
+                let manifest = workspace.read_manifest(case)?;
+                let artifact = manifest.artifact(layer);
+                return Err(CliError::new(format!(
+                    "{}未通过门禁，正文已落盘、状态保持 {}：\n{}",
+                    layer_label(layer),
+                    artifact.status.as_str(),
+                    report.reasons.join("\n")
+                )));
+            }
+            let manifest = workspace.read_manifest(case)?;
             let artifact = manifest.artifact(layer);
             println!(
                 "已更新{}：版本 {}，状态 {}，更新于 {}",

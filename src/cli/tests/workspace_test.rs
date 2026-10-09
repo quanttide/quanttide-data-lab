@@ -57,19 +57,27 @@ fn update_then_show_roundtrips_body_and_bumps_version() {
             .success()
     );
 
+    // `update` 落盘后自动跑本层门禁；「搜索相关失败率下降」不构成
+    // 「指标 | 口径 | 目标方向」表，必被 REQ 门禁拒绝。
     let update = run_with_stdin(
         &["--root", root, "--case", "case-b", "req", "update"],
         "搜索相关失败率下降\n",
     );
+    assert!(!update.status.success(), "不达标正文应被门禁拒绝");
+    assert_eq!(update.status.code(), Some(1), "门禁拒绝应退出码 1");
     assert!(
-        update.status.success(),
-        "stderr：{}",
+        String::from_utf8_lossy(&update.stderr).contains("REQ-1"),
+        "拒绝理由应指名规则：{}",
         String::from_utf8_lossy(&update.stderr)
     );
 
     let show = run(&["--root", root, "--case", "case-b", "req", "show"]);
     assert!(show.status.success());
-    assert_eq!(stdout(&show), "搜索相关失败率下降\n");
+    assert_eq!(
+        stdout(&show),
+        "搜索相关失败率下降\n",
+        "未过门禁也应落盘原文"
+    );
 
     let status = run(&["--root", root, "--case", "case-b", "status"]);
     assert!(status.status.success());

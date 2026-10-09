@@ -65,6 +65,35 @@ impl Layer {
             Layer::Implementation => "implementation",
         }
     }
+
+    /// 对该层正文跑结构化门禁，返回「通过 / 不通过 + 逐条理由」。
+    pub fn gate(self, body: &str) -> GateReport {
+        match self {
+            Layer::Requirement => requirement::gate(body),
+            Layer::Intent => intent::gate(body),
+            Layer::Specification => specification::gate(body),
+            Layer::Implementation => implementation::gate(body),
+        }
+    }
+}
+
+/// 结构化门禁的结论：是否通过，以及不通过时的逐条理由。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GateReport {
+    /// 是否通过门禁。
+    pub passed: bool,
+    /// 不通过的理由，每条对应一次机械判定。
+    pub reasons: Vec<String>,
+}
+
+impl GateReport {
+    /// 由逐条理由构造：无理由即通过。
+    pub fn from_reasons(reasons: Vec<String>) -> Self {
+        Self {
+            passed: reasons.is_empty(),
+            reasons,
+        }
+    }
 }
 
 /// 产物状态机的状态：`draft → validated → executed`，另有 `failed` 与 `stale`。
@@ -275,6 +304,148 @@ impl Workspace {
         fs::write(self.manifest_path(case), text)?;
         Ok(())
     }
+}
+
+impl Workspace {
+    /// 对某层已落盘的正文跑门禁；通过则把状态置 `validated`，不通过保持 `draft`。
+    ///
+    /// 门禁只看正文结构，不写盘、不接网络。返回逐条理由供调用方展示。
+    pub fn gate_doc(&self, case: &str, layer: Layer) -> Result<GateReport, LabError> {
+        let body = self.read_doc(case, layer)?;
+        let report = layer.gate(&body);
+        if report.passed {
+            let mut manifest = self.read_manifest(case)?;
+            manifest.artifact_mut(layer).status = Status::Validated;
+            self.write_manifest(case, &manifest)?;
+        }
+        Ok(report)
+    }
+}
+
+/// Markdown 表格：表头与数据行。
+pub(crate) struct Table {
+    /// 表头单元格（已去空白）。
+    pub header: Vec<String>,
+    /// 数据行。
+    pub rows: Vec<Vec<String>>,
+}
+
+/// 标题层级：以若干 `#` 开头且后接空白者为标题。
+pub(crate) fn heading_level(line: &str) -> Option<usize> {
+    let trimmed = line.trim_start();
+    let hashes = trimmed.chars().take_while(|c| *c == '#').count();
+    if !(1..=6).contains(&hashes) {
+        return None;
+    }
+    let rest = &trimmed[hashes..];
+    if rest.is_empty() || rest.starts_with(' ') {
+        Some(hashes)
+    } else {
+        None
+    }
+}
+
+/// 标题文本（去掉前导 `#` 与空白）。
+pub(crate) fn heading_text(line: &str) -> &str {
+    line.trim_start().trim_start_matches('#').trim()
+}
+
+/// 取标题文本包含 `name` 的小节正文（含标题行），到下一个同级或更高级标题为止。
+pub(crate) fn section(body: &str, name: &str) -> Option<String> {
+    let lines: Vec<&str> = body.lines().collect();
+    let start = lines
+        .iter()
+        .position(|line| heading_level(line).is_some() && heading_text(line).contains(name))?;
+    let level = heading_level(lines[start])?;
+    let mut end = lines.len();
+    for (index, line) in lines.iter().enumerate().skip(start + 1) {
+        if let Some(inner) = heading_level(line) {
+            if inner <= level {
+                end = index;
+                break;
+            }
+        }
+    }
+    Some(lines[start..end].join("\n"))
+}
+
+/// 小节是否存在且至少含一个非空列表项。
+pub(crate) fn has_bullet_section(body: &str, name: &str) -> bool {
+    section(body, name).is_some_and(|text| {
+        text.lines().any(|line| {
+            let trimmed = line.trim();
+            (trimmed.starts_with("- ") || trimmed.starts_with("* "))
+                && !trimmed[2..].trim().is_empty()
+        })
+    })
+}
+
+/// 是否为表格行（含 `|`）。
+fn is_table_row(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with('|') && trimmed.matches('|').count() >= 2
+}
+
+/// 是否为表格分隔行（各单元格形如 `:--:`）。
+fn is_separator_row(line: &str) -> bool {
+    if !is_table_row(line) {
+        return false;
+    }
+    let cells = parse_cells(line.trim());
+    !cells.is_empty()
+        && cells.iter().all(|cell| {
+            let dashes = cell.trim_matches(':');
+            !dashes.is_empty() && dashes.chars().all(|c| c == '-')
+        })
+}
+
+/// 拆一行表格为单元格文本。
+fn parse_cells(line: &str) -> Vec<String> {
+    line.trim()
+        .trim_matches('|')
+        .split('|')
+        .map(|cell| cell.trim().to_string())
+        .collect()
+}
+
+/// 取正文中全部 Markdown 表格。
+pub(crate) fn tables(body: &str) -> Vec<Table> {
+    let lines: Vec<&str> = body.lines().collect();
+    let mut out = Vec::new();
+    let mut index = 0;
+    while index < lines.len() {
+        if is_table_row(lines[index])
+            && index + 1 < lines.len()
+            && is_separator_row(lines[index + 1])
+        {
+            let header = parse_cells(lines[index].trim());
+            let mut rows = Vec::new();
+            let mut cursor = index + 2;
+            while cursor < lines.len() && is_table_row(lines[cursor]) {
+                rows.push(parse_cells(lines[cursor].trim()));
+                cursor += 1;
+            }
+            out.push(Table { header, rows });
+            index = cursor;
+        } else {
+            index += 1;
+        }
+    }
+    out
+}
+
+/// 表头同时含全部 `required` 单元格的表格。
+pub(crate) fn find_table(body: &str, required: &[&str]) -> Option<Table> {
+    tables(body).into_iter().find(|table| {
+        required
+            .iter()
+            .all(|name| table.header.iter().any(|cell| cell == name))
+    })
+}
+
+/// 表头中某列的下标。
+pub(crate) fn column(header: &[String], name: &str) -> Option<usize> {
+    header.iter().position(|cell| cell == name)
 }
 
 /// 层的中文名，用于可读错误信息。
