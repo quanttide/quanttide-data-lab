@@ -11,22 +11,24 @@
 - [x] **脚手架**：`packages/rust`（`quanttide-data-lab`，data 库）与 `src/cli`（`qtcloud-data-lab`，bin）分离：库不依赖 `quanttide-agent`；CLI 已声明对 data 库与 `quanttide-agent` 0.1.2 的依赖，agent 的调用待 M1b。
 - [x] **四层分层约定**：`requirement` / `intent` / `specification` / `implementation` 四个模块占位，`lib.rs` 的 `Layer` 枚举给出 `REQ/INT/SPEC/IMP` 前缀。实体、`Artifact` 与状态机（`draft → validated → executed` / `failed` / `stale`）待 M1a。
 - [x] **命令行入口**：`req|intent|spec|impl new|update|show`、`run [<step>...]`、`trace [--claim <id>]`、`refute <from> <to>`、`status`；另有全局参数 `--root <dir>`（工作空间根，默认 `./workspace/`）与 `--case <name>`（案例名，默认 `default`）。四层的 `new|update|show` 与 `status` 已接真实读写；`run`/`trace`/`refute` 仍为占位。
-- [x] **案例驱动测试**：以「量潮搜索工程」为样本，`src/cli/tests/` 5 个集成测试文件（库 2 条 + CLI 27 条，离线全绿；覆盖率未测）。
+- [x] **案例驱动测试**：以「量潮搜索工程」为样本，`src/cli/tests/` 6 个集成测试文件（库 2 条 + CLI 29 条，离线全绿；覆盖率未测）。
 
 ---
 
-## M1a 有 I/O、有门禁（不接模型）
+## M1a 有 I/O、有门禁（不接模型）—— 已完成
 
 > 四层产物能落盘、能读回、能被结构化门禁拦下——全程零 LLM。
 
 - [x] **工作空间 I/O**：`workspace/<case>/docs/{requirement,intent,specification,implementation}.md` 与 `manifest.json` 的读写（版本、时间戳、状态）；四层的 `new|update|show` 与 `status` 接上真实读写。
-- [ ] **四层结构化门禁**：
+- [x] **四层结构化门禁**：规则落在 `packages/rust/src/{requirement,intent,specification,implementation}.rs`，逐条编号（`REQ-1…3` / `INT-1…3` / `SPEC-1…3` / `IMP-1…3`），每条在代码注释里注明它落实下面哪一句：
   - `REQ`：成功指标是业务后果而非交付物；范围可界定；约束齐全。
   - `INT`：每个概念有操作定义；每个命题有可证伪条件；相关与因果分列。
   - `SPEC`：每个指标可计算；每个流程步骤有验收标准；命名与口径唯一。
   - `IMP`：定义来自 `INT`、约束来自 `SPEC`，不另立定义与流程。
-- [ ] **门禁拒绝路径**：不达标产物停在 `draft`，不得标 `validated`，并给出可读的拒绝理由。
-- [ ] **验收**：以主仓「量潮搜索工程」的四份原文为夹具逐层过门禁；再故意改坏一处（如把成功指标写成交付物），门禁须拒绝并说明理由。
+
+  判定是**结构化近似**（表头、列、小节、编号与关键词），语义判定仍待「未决」里那一条拍板。
+- [x] **门禁拒绝路径**：四层的 `new`/`update` 落盘后自动跑本层门禁——通过则置 `validated`；不通过则正文照落盘、状态保持或回退 `draft`、逐条打印拒绝理由、以退出码 1 结束（`new` 建的是空正文，不跑门禁）。
+- [x] **验收**：夹具 `examples/fixtures/quanttide-search/`（主仓案例按四个二级标题切分，与原文逐字核对一致）逐层过门禁并置 `validated`；四层各有一个反样本（改坏一处）被拒——退出码 1、正文照落盘、状态留 `draft`、理由指名规则号。
 
 ## M1b 单层可生成（接模型）
 
