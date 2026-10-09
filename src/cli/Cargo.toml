@@ -1,0 +1,18 @@
+[package]
+name = "qtcloud-data-lab"
+version = "0.1.0"
+edition = "2024"
+authors = ["QuantTide Inc. <opensource@quanttide.com>"]
+description = "量潮数据工程实验室 CLI — 四层形式化数据智能体"
+license = "MIT"
+
+[[bin]]
+name = "qtcloud-data-lab"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+quanttide-data-lab = { path = "../../packages/rust" }
