@@ -1,6 +1,6 @@
 //! CLI 命令面集成测试。
 //!
-//! 命令面按《量潮智能体搜索行为分析》（`docs/gallery/quanttide-agent/search.md`）的四层链路设计：
+//! 命令面按《量潮智能体搜索行为分析》（主仓 `data/profile/quanttide-agent/search.md`）的四层链路设计：
 //! 数据需求 → 数据意图 → 数据规格 → 数据实现；数据规格的流程步骤交给 `run` 按规格执行，
 //! 追溯矩阵与反向挑战分别对应 `trace`、`refute`，层状态对应 `status`。
 
