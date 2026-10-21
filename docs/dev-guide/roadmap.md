@@ -1,6 +1,6 @@
 # ROADMAP
 
-四层形式化数据智能体的路线图。设计见 [`docs/index.md`](docs/index.md)，方法论见主仓 `docs/essay/intro/index.md`，验收样本见主仓 `data/profile/quanttide-agent/search.md`（四层案例，已就绪）。
+四层形式化数据智能体的路线图。设计见 [`docs/index.md`](../index.md)，方法论见主仓 `docs/essay/intro/index.md`，验收样本见主仓 `data/profile/quanttide-agent/search.md`（四层案例，已就绪）。
 
 状态记号：`[ ]` 未开始 · `[~]` 进行中 · `[x]` 完成
 
