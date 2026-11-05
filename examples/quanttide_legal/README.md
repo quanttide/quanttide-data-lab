@@ -5,7 +5,7 @@
 ## 运行
 
 ```bash
-cd examples/quanttide-legal
+cd examples/quanttide_legal
 python3 -m qtlegal demo        # 按序运行 spec → collect → generate → judge → verify → deliver
 ```
 
