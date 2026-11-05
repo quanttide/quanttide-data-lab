@@ -5,7 +5,7 @@
 ## 运行
 
 ```bash
-cd examples/quanttide_legal
+cd examples/quanttide-legal
 chmod +x scripts/qtlegal
 scripts/qtlegal demo              # 按序运行 spec → collect → generate → judge → verify → deliver
 ```

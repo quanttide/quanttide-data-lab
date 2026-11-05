@@ -15,7 +15,7 @@ PROJECT = Path(__file__).resolve().parent.parent
 class PipelineTest(unittest.TestCase):
     def test_full_chain(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / "quanttide_legal"
+            root = Path(tmp) / "quanttide-legal"
             (root / "data").mkdir(parents=True)
             shutil.copytree(PROJECT / "data" / "fixtures", root / "data" / "fixtures")
             env = dict(os.environ, QTLEGAL_ROOT=str(root),
@@ -40,7 +40,7 @@ class PipelineTest(unittest.TestCase):
     def test_delivery_gate_blocks_on_quota(self):
         """量纲抬高后 C05 只有一道 verified 题，deliver 应拒绝打包。"""
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / "quanttide_legal"
+            root = Path(tmp) / "quanttide-legal"
             (root / "data").mkdir(parents=True)
             shutil.copytree(PROJECT / "data" / "fixtures", root / "data" / "fixtures")
             spec_path = root / "data" / "fixtures" / "regulation" / "spec.sample.json"
