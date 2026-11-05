@@ -1,12 +1,16 @@
-"""命令行入口：python -m qtlegal <command>"""
+"""命令行入口：bin/qtlegal 或 PYTHONPATH=src python3 -m qtlegal <command>
+
+项目根可用环境变量 QTLEGAL_ROOT 覆盖（测试隔离用）。
+"""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 from . import commands
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(os.environ.get("QTLEGAL_ROOT", Path(__file__).resolve().parents[2]))
 
 
 def main() -> int:

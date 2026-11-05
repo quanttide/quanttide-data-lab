@@ -45,14 +45,14 @@ def _sha256(path: Path) -> str:
 # ---- spec：规格书校验与版本化 ----
 
 def cmd_spec(root: Path) -> int:
-    fixtures = root / "fixtures"
+    fixtures = root / "data" / "fixtures"
     spec = load_spec(fixtures)
     problems = []
     if len(set(spec.required)) != len(spec.required):
         problems.append("required_categories 存在重复")
     if any(not c.startswith("C") for c in spec.required):
         problems.append("required_categories 存在非类别编码")
-    work = root / "work" / "spec" / spec.version
+    work = root / "data" / "work" / "spec" / spec.version
     work.mkdir(parents=True, exist_ok=True)
     (work / "spec.json").write_text(json.dumps(spec.data, ensure_ascii=False, indent=2))
     print(f"[spec] 规格书 {spec.version} 已版本化 -> {work}")
@@ -68,8 +68,8 @@ def cmd_spec(root: Path) -> int:
 # ---- collect：词库采集与登记 ----
 
 def cmd_collect(root: Path) -> int:
-    src = root / "fixtures" / "lexicon" / "sample.csv"
-    work = root / "work"
+    src = root / "data" / "fixtures" / "lexicon" / "sample.csv"
+    work = root / "data" / "work"
     dest = work / "data" / "raw" / "lexicon" / "sample" / time.strftime("%Y%m%d")
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy(src, dest / "sample.csv")
@@ -91,11 +91,11 @@ def cmd_collect(root: Path) -> int:
 # ---- generate：生产 draft，入库即拦截 ----
 
 def cmd_generate(root: Path) -> int:
-    store = Store(root / "work")
-    spec = load_spec(root / "fixtures")
-    mock = json.loads((root / "fixtures" / "mock_service.json").read_text())
+    store = Store(root / "data" / "work")
+    spec = load_spec(root / "data" / "fixtures")
+    mock = json.loads((root / "data" / "fixtures" / "mock_service.json").read_text())
     lexicon = list(csv.DictReader(
-        (root / "fixtures" / "lexicon" / "sample.csv").read_text().splitlines()))
+        (root / "data" / "fixtures" / "lexicon" / "sample.csv").read_text().splitlines()))
 
     run_id = store.new_run("demo-product", spec.data["region"], spec.version,
                            {"batch_note": "demo batch"})
@@ -165,9 +165,9 @@ def cmd_generate(root: Path) -> int:
 # ---- judge：研判双人流，状态机推进 ----
 
 def cmd_judge(root: Path) -> int:
-    store = Store(root / "work")
-    spec = load_spec(root / "fixtures")
-    mock = json.loads((root / "fixtures" / "mock_service.json").read_text())
+    store = Store(root / "data" / "work")
+    spec = load_spec(root / "data" / "fixtures")
+    mock = json.loads((root / "data" / "fixtures" / "mock_service.json").read_text())
     drafts = [q for q in store.questions() if not q.get("verifier")]
     if not drafts:
         print("[judge] 无 draft 题目，先运行 generate")
@@ -222,8 +222,8 @@ def cmd_judge(root: Path) -> int:
 # ---- verify：覆盖差集、量纲、溯源、指标计算 ----
 
 def compute_indicators(root: Path) -> tuple[dict, list[str]]:
-    store = Store(root / "work")
-    spec = load_spec(root / "fixtures")
+    store = Store(root / "data" / "work")
+    spec = load_spec(root / "data" / "fixtures")
     questions = store.questions()
     keywords = store.keywords()
     verified = [q for q in questions if q.get("verifier")]
@@ -284,7 +284,7 @@ def compute_indicators(root: Path) -> tuple[dict, list[str]]:
 
 def cmd_verify(root: Path) -> int:
     indicators, failures = compute_indicators(root)
-    out = root / "work" / "indicators.json"
+    out = root / "data" / "work" / "indicators.json"
     out.write_text(json.dumps(indicators, ensure_ascii=False, indent=2))
     print(f"[verify] 指标已写 {out}")
     for k, v in indicators.items():
@@ -310,11 +310,11 @@ def cmd_deliver(root: Path) -> int:
         for f in failures:
             print(f"  - {f}")
         return 1
-    store = Store(root / "work")
-    spec = load_spec(root / "fixtures")
+    store = Store(root / "data" / "work")
+    spec = load_spec(root / "data" / "fixtures")
     questions = [q for q in store.questions() if q.get("verifier")]
     batch = questions[0]["batch_id"] if questions else "batch-empty"
-    dest = root / "work" / "deliver" / batch
+    dest = root / "data" / "work" / "deliver" / batch
     dest.mkdir(parents=True, exist_ok=True)
 
     q_path = dest / "questions.jsonl"

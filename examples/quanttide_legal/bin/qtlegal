@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# qtlegal 命令行入口：bin/qtlegal [spec|collect|generate|judge|verify|deliver|demo]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec env PYTHONPATH=src python3 -m qtlegal "$@"

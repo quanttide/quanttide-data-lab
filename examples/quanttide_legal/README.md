@@ -6,17 +6,24 @@
 
 ```bash
 cd examples/quanttide_legal
-python3 -m qtlegal demo        # 按序运行 spec → collect → generate → judge → verify → deliver
+chmod +x bin/qtlegal
+bin/qtlegal demo              # 按序运行 spec → collect → generate → judge → verify → deliver
 ```
 
 单步运行：
 
 ```bash
-python3 -m qtlegal generate    # 生产 draft（入库即拦截）
-python3 -m qtlegal verify      # 覆盖差集、量纲、溯源与指标计算
+bin/qtlegal generate          # 生产 draft（入库即拦截）
+bin/qtlegal verify            # 覆盖差集、量纲、溯源与指标计算
 ```
 
-产物在 `work/`（已 gitignore）：`store/`（questions、keywords、runs、judgments 的 JSONL）、`indicators.json`、`deliver/<batch>/`（交付包、report.md、复算记录.txt）。
+冒烟测试（零依赖，unittest）：
+
+```bash
+python3 tests/test_pipeline.py
+```
+
+产物在 `data/work/`（已 gitignore）：`store/`（questions、keywords、runs、judgments 的 JSONL）、`indicators.json`、`deliver/<batch>/`（交付包、report.md、复算记录.txt）。
 
 ## 演示了什么
 
