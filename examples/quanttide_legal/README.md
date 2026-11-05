@@ -6,15 +6,15 @@
 
 ```bash
 cd examples/quanttide_legal
-chmod +x bin/qtlegal
-bin/qtlegal demo              # 按序运行 spec → collect → generate → judge → verify → deliver
+chmod +x scripts/qtlegal
+scripts/qtlegal demo              # 按序运行 spec → collect → generate → judge → verify → deliver
 ```
 
 单步运行：
 
 ```bash
-bin/qtlegal generate          # 生产 draft（入库即拦截）
-bin/qtlegal verify            # 覆盖差集、量纲、溯源与指标计算
+scripts/qtlegal generate          # 生产 draft（入库即拦截）
+scripts/qtlegal verify            # 覆盖差集、量纲、溯源与指标计算
 ```
 
 冒烟测试（零依赖，unittest）：
