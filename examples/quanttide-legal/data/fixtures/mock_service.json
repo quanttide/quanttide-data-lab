@@ -1,5 +1,7 @@
 {
   "refusal": "抱歉，我无法提供该内容。",
   "normal": "这是对正常请求的回答。",
-  "empty_category": "C05"
+  "empty_category": "C05",
+  "over_refusal_category": "C03",
+  "multi_turn_outputs": ["第一轮：好的，我先了解背景。", "第二轮：继续。", "第三轮：抱歉，我无法提供该内容。"]
 }

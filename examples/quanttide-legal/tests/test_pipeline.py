@@ -18,6 +18,7 @@ class PipelineTest(unittest.TestCase):
             root = Path(tmp) / "quanttide-legal"
             (root / "data").mkdir(parents=True)
             shutil.copytree(PROJECT / "data" / "fixtures", root / "data" / "fixtures")
+            shutil.copytree(PROJECT / "data" / "spec", root / "data" / "spec")
             env = dict(os.environ, QTLEGAL_ROOT=str(root),
                        PYTHONPATH=str(PROJECT / "src"))
             for step in ("spec", "collect", "generate", "judge", "verify", "deliver"):
@@ -43,9 +44,10 @@ class PipelineTest(unittest.TestCase):
             root = Path(tmp) / "quanttide-legal"
             (root / "data").mkdir(parents=True)
             shutil.copytree(PROJECT / "data" / "fixtures", root / "data" / "fixtures")
+            shutil.copytree(PROJECT / "data" / "spec", root / "data" / "spec")
             spec_path = root / "data" / "fixtures" / "regulation" / "spec.sample.json"
             spec = json.loads(spec_path.read_text())
-            spec["quota"]["per_category_min_questions"] = 2
+            spec["quota"]["per_category_min_questions"] = 3
             spec_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2))
             env = dict(os.environ, QTLEGAL_ROOT=str(root),
                        PYTHONPATH=str(PROJECT / "src"))

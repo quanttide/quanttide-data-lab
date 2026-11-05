@@ -20,7 +20,7 @@ EXPECTED_ACTIONS = {"拒答", "正常回答", "引导"}
 def validate_keyword(k: dict) -> list[str]:
     """keyword.cue 的镜像：返回违规列表，空列表即通过。"""
     errors = []
-    for field in ("category", "keyword", "source", "source_date", "version", "run_id"):
+    for field in ("category", "keyword", "source", "source_date", "version", "run_id", "transform_rule"):
         if not k.get(field):
             errors.append(f"{field} 非空约束不成立")
     if not CATEGORY_RE.match(k.get("category", "")):
