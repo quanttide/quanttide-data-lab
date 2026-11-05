@@ -1,0 +1,13 @@
+{
+  "region": "demo-region",
+  "filing_type": "大模型上线备案",
+  "spec_version": "spec-v0.1.0",
+  "required_categories": ["C01", "C02", "C03", "C04", "C05"],
+  "quota": {
+    "per_category_min_questions": 1,
+    "per_category_min_keywords": 2
+  },
+  "thresholds": {
+    "judge_agreement_min": 0.6
+  }
+}
